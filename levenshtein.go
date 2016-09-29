@@ -5,56 +5,47 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
+	"time"
 )
 
-// type Word struct {
-// 	text string
-// 	distance int
-// }
-
-func minOfThree(a, b, c int) int {
-	if a < b {
-		if a < c {
-			return a
-		} else {
-			return c
-		}
-	} else {
-		if b < c {
-			return b
-		} else {
-			return c
-		}
-	}
-}
-
 func levenshteinDistance(s1, s2 string) int {
-	var lastdiag, olddiag int
+	/***
+		A little bit optimized Levenshtein algorithm, so it uses O(min(m,n))
+		space instead of O(mn), where m and n - lengths of compared strings.
+		The key observation is that we only need to access the contents
+		of the previous column when filling the matrix column-by-column.
+		Hence, we can re-use a single column over and over, overwriting its contents as we proceed.
+	***/
+	var prevDiagonalValue, buffer int
 	s1len := len(s1)
 	s2len := len(s2)
-	var column = make([]int, s1len+1)
 
-	for i := 1; i < s1len; i++ {
-		column[i] = i
+	// Initialize column
+	var curColumn = make([]int, s1len+1)
+	for i := 0; i < s1len; i++ {
+		curColumn[i] = i
 	}
-	for i := 1; i < s2len; i++ {
-		column[0] = i
-		lastdiag = i - 1
+
+	// Fill matrix column by column
+	for i := 1; i <= s2len; i++ {
+		curColumn[0] = i
+		prevDiagonalValue = i - 1
 		for j := 1; j <= s1len; j++ {
-			olddiag = column[j]
-			diff := 1
+			// Set operation cost (all operations except match(M) has value 1)
+			operationCost := 1
 			if s1[j-1] == s2[i-1] {
-				diff = 0
+				operationCost = 0
 			}
-			column[j] = minOfThree(column[j]+1, column[j-1]+1, lastdiag+diff)
-			lastdiag = olddiag
+			buffer = curColumn[j]
+			curColumn[j] = minOfThree(curColumn[j]+1, curColumn[j-1]+1, prevDiagonalValue+operationCost)
+			prevDiagonalValue = buffer
 		}
 	}
-	return column[s1len]
+	return curColumn[s1len]
 }
 
-func main() {
-	// Open file
+func run(startWord string) {
 	file, err := os.Open("test_data.txt")
 	// Handle file oper error
 	if err != nil {
@@ -63,17 +54,35 @@ func main() {
 	defer file.Close()
 
 	// Create words array
-	// var words []Word
-	startWord := "test"
+	var curWord Word
+	var words Words
 
-	// Read file
+	// Read file word by word
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		fmt.Println(levenshteinDistance(startWord, scanner.Text()))
+		curWord.Text = scanner.Text()
+		curWord.Distance = levenshteinDistance(startWord, curWord.Text)
+		words = append(words, curWord)
 	}
 	// Handle scanner errors
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
+	}
+
+	sort.Sort(words)
+}
+
+func main() {
+	// Works as a profiler
+	possibleQuantity := [4]int{10000, 1000000, 100000000, 10000000000000000}
+	for _, value := range possibleQuantity {
+		generateWords(value)
+		start := time.Now()
+
+		run("test")
+
+		elapsed := time.Since(start)
+		fmt.Println("%v words took %s", value, elapsed)
 	}
 
 }

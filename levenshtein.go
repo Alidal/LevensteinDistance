@@ -2,11 +2,18 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"log"
-	"os"
+	//"os"
 	"sort"
-	"time"
+	"github.com/pkg/profile"
+	//"net/http"
+	//"time"
+	//"fmt"
+	"io"
+	//"time"
+	//"fmt"
+	"os"
+	//"github.com/wblakecaldwell/profiler"
 )
 
 func levenshteinDistance(s1, s2 string) int {
@@ -45,13 +52,7 @@ func levenshteinDistance(s1, s2 string) int {
 	return curColumn[s1len]
 }
 
-func run(startWord string) {
-	file, err := os.Open("test_data.txt")
-	// Handle file oper error
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+func run(startWord string, file io.Reader) Words{
 
 	// Create words array
 	var curWord Word
@@ -70,19 +71,31 @@ func run(startWord string) {
 	}
 
 	sort.Sort(words)
+
+	return (words)
+}
+
+func createTestFile(possibleQuantity []int) {
+	for _, value := range possibleQuantity {
+		generateWords(value)
+	}
 }
 
 func main() {
 	// Works as a profiler
-	possibleQuantity := [4]int{10000, 1000000, 100000000, 10000000000000000}
-	for _, value := range possibleQuantity {
-		generateWords(value)
-		start := time.Now()
+	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 
-		run("test")
+	file, err := os.Open("test40000000.txt")
 
-		elapsed := time.Since(start)
-		fmt.Println("%v words took %s", value, elapsed)
+	if err != nil {
+		log.Fatal(err)
 	}
+	defer file.Close()
 
+	//start := time.Now()
+
+	run("test",file)
+
+	//elapsed := time.Since(start)
+	//fmt.Println("Task took ", elapsed)
 }

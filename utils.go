@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 	"math/rand"
+	"strconv"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -53,17 +54,19 @@ func randomWord(n int) string {
 }
 
 func generateWords(n int) {
-	file, err := os.Open("test_data.txt")
-	// Handle file oper error
+	file, err := os.Create("test" + strconv.Itoa(n) + ".txt")
+	// Handle file open error
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
 
 	var curLen int
-	for i := 0; i <= n; i++ {
+	for i := 0; i < n; i++ {
 		curLen = rand.Intn(15)
-		file.WriteString(randomWord(curLen))
+		file.WriteString(randomWord(curLen + 1) + "\n")
+		if math.Mod(float64(i), 1000000) == 0 {
+			fmt.Println(i, "words created")
+		}
 	}
-
 }

@@ -2,28 +2,21 @@ package main
 
 import (
 	"bufio"
-	"log"
-	//"os"
-	"sort"
+	"fmt"
+	"flag"
 	"github.com/pkg/profile"
-	//"net/http"
-	//"time"
-	//"fmt"
 	"io"
-	//"time"
-	//"fmt"
+	"log"
 	"os"
-	//"github.com/wblakecaldwell/profiler"
+	"sort"
 )
 
+// A little bit optimized Levenshtein algorithm, so it uses O(min(m,n))
+// space instead of O(mn), where m and n - lengths of compared strings.
+// The key observation is that we only need to access the contents
+// of the previous column when filling the matrix column-by-column.
+// Hence, we can re-use a single column over and over, overwriting its contents as we proceed.
 func levenshteinDistance(s1, s2 string) int {
-	/***
-		A little bit optimized Levenshtein algorithm, so it uses O(min(m,n))
-		space instead of O(mn), where m and n - lengths of compared strings.
-		The key observation is that we only need to access the contents
-		of the previous column when filling the matrix column-by-column.
-		Hence, we can re-use a single column over and over, overwriting its contents as we proceed.
-	***/
 	var prevDiagonalValue, buffer int
 	s1len := len(s1)
 	s2len := len(s2)
@@ -52,18 +45,16 @@ func levenshteinDistance(s1, s2 string) int {
 	return curColumn[s1len]
 }
 
-func run(startWord string, file io.Reader) Words{
-
-	// Create words array
-	var curWord Word
+func run(startWord string, file io.Reader) Words {
+	var currentWord Word
 	var words Words
 
 	// Read file word by word
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		curWord.Text = scanner.Text()
-		curWord.Distance = levenshteinDistance(startWord, curWord.Text)
-		words = append(words, curWord)
+		currentWord.Text = scanner.Text()
+		currentWord.Distance = levenshteinDistance(startWord, currentWord.Text)
+		words = append(words, currentWord)
 	}
 	// Handle scanner errors
 	if err := scanner.Err(); err != nil {
@@ -71,31 +62,29 @@ func run(startWord string, file io.Reader) Words{
 	}
 
 	sort.Sort(words)
-
-	return (words)
-}
-
-func createTestFile(possibleQuantity []int) {
-	for _, value := range possibleQuantity {
-		generateWords(value)
-	}
+	return words
 }
 
 func main() {
-	// Works as a profiler
+	wordsQuantity := flag.Int("n", 40000000, "Number of random words in test set.")
+	startWord := flag.String("word", "test", "Program will calculate Levenshtein distance from this word.")
+	flag.Parse()
+
+	// Create test set, if it was not previously created
+	fileName := fmt.Sprintf("test%v.txt", *wordsQuantity)
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		generateTestFileWithLength(*wordsQuantity)
+	}
+
+	// Run profiler to measure time and memory consumption
 	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 
-	file, err := os.Open("test40000000.txt")
-
+	file, err := os.Open(fileName)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
 
-	//start := time.Now()
-
-	run("test",file)
-
-	//elapsed := time.Since(start)
-	//fmt.Println("Task took ", elapsed)
+	run(*startWord, file)
+	fmt.Println(*wordsQuantity, "words has been sorted succesfully.")
 }

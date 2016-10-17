@@ -7,6 +7,7 @@ type Word struct {
 
 type Words []Word
 
+// Implementing methods needed for using sort.Sort() function
 func (slice Words) Len() int {
 	return len(slice)
 }

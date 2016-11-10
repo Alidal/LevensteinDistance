@@ -2,8 +2,8 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"flag"
+	"fmt"
 	"github.com/pkg/profile"
 	"io"
 	"log"

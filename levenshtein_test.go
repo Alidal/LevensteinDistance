@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bytes"
-	"io"
+	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"testing"
 )
 
@@ -25,12 +23,12 @@ type testpairLines struct {
 }
 
 type testpairlevenshteinDistance struct {
-	s1       string
-	s2       string
+	from     string
+	to       string
 	distance int
 }
 
-var testsMin = []testpairMin{
+var testsMinOfThree = []testpairMin{
 	{[]int{1, 2}, 1},
 	{[]int{50, 100}, 50},
 	{[]int{-1, 1}, -1},
@@ -76,13 +74,13 @@ var testRun = Words{
 }
 
 func TestMinOfThree(t *testing.T) {
-	for _, pair := range testsMin {
-		v := minOfThree(pair.values[0], pair.values[1], pair.min)
-		if v != pair.min {
+	for _, pair := range testsMinOfThree {
+		result := minOfThree(pair.values[0], pair.values[1], pair.min)
+		if result != pair.min {
 			t.Error(
 				"For", pair.values,
 				"expected", pair.min,
-				"got", v,
+				"got", result,
 			)
 		}
 	}
@@ -90,50 +88,33 @@ func TestMinOfThree(t *testing.T) {
 
 func TestRandomWord(t *testing.T) {
 	for _, pair := range testsRand {
-		v := randomWord(pair.length)
-		if len(v) != pair.expectedLength {
+		result := randomWord(pair.length)
+		if len(result) != pair.expectedLength {
 			t.Error(
 				"For", pair.length,
 				"expected", pair.expectedLength,
-				"got", v,
+				"got", result,
 			)
-		}
-	}
-}
-
-func lineCounter(r io.Reader) (int, error) {
-	buf := make([]byte, 32*1024)
-	count := 0
-	lineSep := []byte{'\n'}
-
-	for {
-		c, err := r.Read(buf)
-		count += bytes.Count(buf[:c], lineSep)
-
-		switch {
-		case err == io.EOF:
-			return count, nil
-
-		case err != nil:
-			return count, err
 		}
 	}
 }
 
 func TestGenerateTestFileWithLength(t *testing.T) {
 	for _, pair := range testsGenerate {
-		generateTestFileWithLength(pair.count)
-		r, err := os.Open("test" + strconv.Itoa(pair.count) + ".txt")
+		fileName := generateTestFileWithLength(pair.count)
+		file, err := os.Open(fileName)
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer r.Close()
-		v, _ := lineCounter(r)
-		if v != pair.expectedCount {
+		defer file.Close()
+		defer os.Remove(fileName)
+
+		result, _ := lineCounter(file)
+		if result != pair.expectedCount {
 			t.Error(
 				"For", pair.count,
 				"expected", pair.expectedCount,
-				"got", v,
+				"got", result,
 			)
 		}
 	}
@@ -141,12 +122,12 @@ func TestGenerateTestFileWithLength(t *testing.T) {
 
 func TestLength(t *testing.T) {
 	for _, pair := range words {
-		v := pair.Len()
-		if v != len(pair) {
+		result := pair.Len()
+		if result != len(pair) {
 			t.Error(
 				"For", len(pair),
 				"expected", len(pair),
-				"got", pair.Len(),
+				"got", result,
 			)
 		}
 	}
@@ -155,13 +136,13 @@ func TestLength(t *testing.T) {
 func TestLess(t *testing.T) {
 	for _, pair := range words {
 		for i, _ := range pair {
-			v := pair.Less(0, i)
+			result := pair.Less(0, i)
 
-			if v != (pair[0].Distance < pair[i].Distance) {
+			if result != (pair[0].Distance < pair[i].Distance) {
 				t.Error(
 					"For", pair[0].Distance < pair[i].Distance,
 					"expected", pair[0].Distance < pair[i].Distance,
-					"got", pair.Less(0, i),
+					"got", result,
 				)
 			}
 		}
@@ -170,34 +151,45 @@ func TestLess(t *testing.T) {
 
 func TestLevensteinDistance(t *testing.T) {
 	for _, pair := range testlevenshteinDistance {
-		v := levenshteinDistance(pair.s1, pair.s2)
-		if v != pair.distance {
+		result := levenshteinDistance(pair.from, pair.to)
+		if result != pair.distance {
 			t.Error(
-				"For", pair.s1, pair.s2,
+				"For", pair.from, pair.to,
 				"expected", pair.distance,
-				"got", v,
+				"got", result,
 			)
 		}
 	}
 }
 
 func TestRun(t *testing.T) {
-	r, err := os.Open("test.txt")
-
+	// Create test file
+	n := len(testRun)
+	fileName := fmt.Sprintf("test%v.txt", n)
+	file, err := os.Create(fileName)
+	// Handle file open error
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer r.Close()
+	defer os.Remove(fileName)
 
-	v := run("test", r)
+	for _, pair := range testRun {
+		file.WriteString(pair.Text + "\n")
+	}
+	file.Close()
+
+	// Test sorting
+	file, _ = os.Open(fileName)
+	defer file.Close()
+	result := run("test", file)
 
 	for i := range testlevenshteinDistance {
 
-		if v[i].Distance != testRun[i].Distance || v[i].Text != testRun[i].Text {
+		if result[i].Distance != testRun[i].Distance || result[i].Text != testRun[i].Text {
 			t.Error(
-				"For", v[i].Text, testRun[i].Text,
+				"For", result[i].Text, testRun[i].Text,
 				"expected", testRun[i].Distance,
-				"got", v[i].Distance,
+				"got", result[i].Distance,
 			)
 		}
 	}

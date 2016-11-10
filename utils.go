@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"math/rand"
@@ -54,7 +56,7 @@ func minOfThree(a, b, c int) int {
 }
 
 // Generate file filled with n random words.
-func generateTestFileWithLength(n int) {
+func generateTestFileWithLength(n int) string {
 
 	fileName := fmt.Sprintf("test%v.txt", n)
 	file, err := os.Create(fileName)
@@ -66,7 +68,7 @@ func generateTestFileWithLength(n int) {
 
 	var randowWordLength int
 	for i := 0; i < n; i++ {
-		randowWordLength = rand.Intn(15)
+		randowWordLength = rand.Intn(10) + 4
 		file.WriteString(randomWord(randowWordLength+1) + "\n")
 		if math.Mod(float64(i), 1000000) == 0 && i != 0 {
 			fmt.Println(i, "words has been created")
@@ -74,4 +76,27 @@ func generateTestFileWithLength(n int) {
 		}
 	}
 	fmt.Println(n, "words has been created")
+
+	return fileName
+}
+
+// Got from here: http://stackoverflow.com/questions/24562942/golang-how-do-i-determine-the-number-of-lines-in-a-file-efficiently
+// Used for tests
+func lineCounter(file io.Reader) (int, error) {
+	buf := make([]byte, 32*1024)
+	count := 0
+	lineSeparator := []byte{'\n'}
+
+	for {
+		c, err := file.Read(buf)
+		count += bytes.Count(buf[:c], lineSeparator)
+
+		switch {
+		case err == io.EOF:
+			return count, nil
+
+		case err != nil:
+			return count, err
+		}
+	}
 }

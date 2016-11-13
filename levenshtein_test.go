@@ -22,7 +22,7 @@ type testpairLines struct {
 	expectedCount int
 }
 
-type testpairlevenshteinDistance struct {
+type testpairLevenshteinDistance struct {
 	from     string
 	to       string
 	distance int
@@ -55,7 +55,7 @@ var words = []Words{
 		{"testabcde", 9}},
 }
 
-var testlevenshteinDistance = []testpairlevenshteinDistance{
+var testLevenshteinDistance = []testpairLevenshteinDistance{
 	{"test", "test", 0},
 	{"test", "testa", 1},
 	{"test", "testab", 2},
@@ -150,8 +150,8 @@ func TestLess(t *testing.T) {
 }
 
 func TestLevensteinDistance(t *testing.T) {
-	for _, pair := range testlevenshteinDistance {
-		result := levenshteinDistance(pair.from, pair.to)
+	for _, pair := range testLevenshteinDistance {
+		result := LevenshteinDistance(pair.from, pair.to)
 		if result != pair.distance {
 			t.Error(
 				"For", pair.from, pair.to,
@@ -183,7 +183,7 @@ func TestRun(t *testing.T) {
 	defer file.Close()
 	result := run("test", file)
 
-	for i := range testlevenshteinDistance {
+	for i := range testLevenshteinDistance {
 
 		if result[i].Distance != testRun[i].Distance || result[i].Text != testRun[i].Text {
 			t.Error(

@@ -5,36 +5,41 @@ import (
 	"flag"
 	"fmt"
 	"github.com/pkg/profile"
-	"io"
 	"log"
 	"os"
 	"sort"
 )
+
+// For limiting number of simultaniously running goroutines we use concurrencyLimiter
+// as semaphore, that permits 70000 connection in one time (to prevent OS freezes)
+const concurrency int = 70000
+
+var concurrencyLimiter = make(chan struct{}, concurrency)
 
 // A little bit optimized Levenshtein algorithm, so it uses O(min(m,n))
 // space instead of O(mn), where m and n - lengths of compared strings.
 // The key observation is that we only need to access the contents
 // of the previous column when filling the matrix column-by-column.
 // Hence, we can re-use a single column over and over, overwriting its contents as we proceed.
-func levenshteinDistance(s1, s2 string) int {
+func LevenshteinDistance(from, to string, c chan Word) {
 	var prevDiagonalValue, buffer int
-	s1len := len(s1)
-	s2len := len(s2)
+	fromLength := len(from)
+	toLength := len(to)
 
 	// Initialize column
-	var curColumn = make([]int, s1len+1)
-	for i := 0; i < s1len; i++ {
+	var curColumn = make([]int, fromLength+1)
+	for i := 0; i < fromLength; i++ {
 		curColumn[i] = i
 	}
 
 	// Fill matrix column by column
-	for i := 1; i <= s2len; i++ {
+	for i := 1; i <= toLength; i++ {
 		curColumn[0] = i
 		prevDiagonalValue = i - 1
-		for j := 1; j <= s1len; j++ {
+		for j := 1; j <= fromLength; j++ {
 			// Set operation cost (all operations except match(M) has value 1)
 			operationCost := 1
-			if s1[j-1] == s2[i-1] {
+			if from[j-1] == to[i-1] {
 				operationCost = 0
 			}
 			buffer = curColumn[j]
@@ -42,23 +47,46 @@ func levenshteinDistance(s1, s2 string) int {
 			prevDiagonalValue = buffer
 		}
 	}
-	return curColumn[s1len]
+
+	// Return value
+	c <- Word{to, curColumn[fromLength]}
+	// Decrease number of running goroutines
+	<-concurrencyLimiter
 }
 
-func run(startWord string, file io.Reader) Words {
-	var currentWord Word
+func run(startWord string, fileName string) Words {
 	var words Words
+	c := make(chan Word)
+	quit := make(chan bool)
 
-	// Read file word by word
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		currentWord.Text = scanner.Text()
-		currentWord.Distance = levenshteinDistance(startWord, currentWord.Text)
-		words = append(words, currentWord)
-	}
-	// Handle scanner errors
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+	go func() {
+		file, err := os.Open(fileName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		// Read file word by word
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			concurrencyLimiter <- struct{}{}
+			go LevenshteinDistance(startWord, scanner.Text(), c)
+		}
+		// Handle scanner errors
+		if err := scanner.Err(); err != nil {
+			log.Fatal(err)
+		}
+		quit <- true
+	}()
+
+Loop:
+	for {
+		select {
+		case word := <-c:
+			words = append(words, word)
+		case <-quit:
+			break Loop
+		}
 	}
 
 	sort.Sort(words)
@@ -78,13 +106,6 @@ func main() {
 
 	// Run profiler to measure time and memory consumption
 	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
-
-	file, err := os.Open(fileName)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	run(*startWord, file)
+	run(*startWord, fileName)
 	fmt.Println(*wordsQuantity, "words has been sorted succesfully.")
 }

@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"time"
 )
 
 // For limiting number of simultaniously running goroutines we use concurrencyLimiter
@@ -54,10 +55,9 @@ func LevenshteinDistance(from, to string, c chan Word) {
 	<-concurrencyLimiter
 }
 
-func run(startWord string, fileName string) Words {
+func run(startWord string, fileName string, quantity int) Words {
 	var words Words
 	c := make(chan Word)
-	quit := make(chan bool)
 
 	go func() {
 		file, err := os.Open(fileName)
@@ -76,25 +76,21 @@ func run(startWord string, fileName string) Words {
 		if err := scanner.Err(); err != nil {
 			log.Fatal(err)
 		}
-		quit <- true
 	}()
 
-Loop:
-	for {
+
+	for i := 0; i < quantity; i++ {
 		select {
-		case word := <-c:
+		case word := <- c:
 			words = append(words, word)
-		case <-quit:
-			break Loop
 		}
 	}
-
 	sort.Sort(words)
 	return words
 }
 
 func main() {
-	wordsQuantity := flag.Int("n", 40000000, "Number of random words in test set.")
+	wordsQuantity := flag.Int("n", 1000000, "Number of random words in test set.")
 	startWord := flag.String("word", "test", "Program will calculate Levenshtein distance from this word.")
 	flag.Parse()
 
@@ -106,6 +102,15 @@ func main() {
 
 	// Run profiler to measure time and memory consumption
 	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
-	run(*startWord, fileName)
+	start := time.Now()
+	run(*startWord, fileName, *wordsQuantity)
+	elapsed := time.Since(start)
+	fmt.Println("words took ", elapsed)
 	fmt.Println(*wordsQuantity, "words has been sorted succesfully.")
+
+//	for _, pair := range answer {
+//		a := pair.Text
+//		b := pair.Distance
+//		fmt.Println(a, b)
+//	}
 }

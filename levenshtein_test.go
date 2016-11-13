@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"testing"
+	"fmt"
 )
 
 type testpairMin struct {
@@ -149,39 +149,16 @@ func TestLess(t *testing.T) {
 	}
 }
 
-func TestLevensteinDistance(t *testing.T) {
-	for _, pair := range testLevenshteinDistance {
-		result := LevenshteinDistance(pair.from, pair.to)
-		if result != pair.distance {
-			t.Error(
-				"For", pair.from, pair.to,
-				"expected", pair.distance,
-				"got", result,
-			)
-		}
-	}
-}
 
 func TestRun(t *testing.T) {
 	// Create test file
-	n := len(testRun)
-	fileName := fmt.Sprintf("test%v.txt", n)
-	file, err := os.Create(fileName)
-	// Handle file open error
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer os.Remove(fileName)
+	result := run("test", "test.txt", 6)
 
-	for _, pair := range testRun {
-		file.WriteString(pair.Text + "\n")
-	}
-	file.Close()
+	fmt.Println(len(result))
 
-	// Test sorting
-	file, _ = os.Open(fileName)
-	defer file.Close()
-	result := run("test", file)
+	for i := range result {
+		fmt.Println(result[i].Distance, result[i].Text)
+	}
 
 	for i := range testLevenshteinDistance {
 

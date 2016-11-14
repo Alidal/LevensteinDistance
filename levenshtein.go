@@ -80,10 +80,7 @@ func run(startWord string, fileName string, quantity int) Words {
 
 
 	for i := 0; i < quantity; i++ {
-		select {
-		case word := <- c:
-			words = append(words, word)
-		}
+		words = append(words, <- c)
 	}
 	sort.Sort(words)
 	return words
@@ -104,13 +101,6 @@ func main() {
 	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 	start := time.Now()
 	run(*startWord, fileName, *wordsQuantity)
-	elapsed := time.Since(start)
-	fmt.Println("words took ", elapsed)
-	fmt.Println(*wordsQuantity, "words has been sorted succesfully.")
-
-//	for _, pair := range answer {
-//		a := pair.Text
-//		b := pair.Distance
-//		fmt.Println(a, b)
-//	}
+	elapsedTime := time.Since(start)
+	fmt.Println(*wordsQuantity, "words has been sorted succesfully. It took", elapsedTime)
 }

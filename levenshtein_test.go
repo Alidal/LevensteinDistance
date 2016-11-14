@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"testing"
-	"fmt"
 )
 
 type testpairMin struct {
@@ -135,7 +134,7 @@ func TestLength(t *testing.T) {
 
 func TestLess(t *testing.T) {
 	for _, pair := range words {
-		for i, _ := range pair {
+		for i := range pair {
 			result := pair.Less(0, i)
 
 			if result != (pair[0].Distance < pair[i].Distance) {
@@ -149,17 +148,25 @@ func TestLess(t *testing.T) {
 	}
 }
 
+func TestLevensteinDistance(t *testing.T) {
+	c := make(chan Word)
+	for _, pair := range testLevenshteinDistance {
+		concurrencyLimiter <- struct{}{}
+		go LevenshteinDistance(pair.from, pair.to, c)
+		result := <- c
+		if result.Distance != pair.distance {
+			t.Error(
+				"For", pair.from, pair.to,
+				"expected", pair.distance,
+				"got", result,
+			)
+		}
+	}
+}
 
 func TestRun(t *testing.T) {
 	// Create test file
 	result := run("test", "test.txt", 6)
-
-	fmt.Println(len(result))
-
-	for i := range result {
-		fmt.Println(result[i].Distance, result[i].Text)
-	}
-
 	for i := range testLevenshteinDistance {
 
 		if result[i].Distance != testRun[i].Distance || result[i].Text != testRun[i].Text {
